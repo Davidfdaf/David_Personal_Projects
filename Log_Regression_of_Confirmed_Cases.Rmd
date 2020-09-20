@@ -1,0 +1,71 @@
+---
+title: "Logistic regression(not ML) of world confirmed cases"
+author: "David F"
+date: "4/26/2020"
+output: pdf_document
+---
+
+```{r}
+xdat<-read.csv("R_assignment_4.csv")
+cov<-data.frame(xdat)
+```
+
+```{r}
+sum<-colSums(cov[ ,c(5:99)]) #world confirmed cases for given day
+days<-c(1:95) #day counter jan 22nd to april 25th
+cov[nrow(cov) + 1,c(5:99)] = sum #add the wolrd confirmed cases into data set
+```
+
+
+```{r}
+###Log fit
+log.fit <- function(dep, ind){
+#Self-starting...
+
+y <- dep
+x <- ind
+
+log.ss <- nls(y ~ SSlogis(x, phi1, phi2, phi3))
+
+#C
+C <- summary(log.ss)$coef[1]
+#a
+A <- exp((summary(log.ss)$coef[2]) * (1/summary(log.ss)$coef[3]))
+#k
+K <- (1 / summary(log.ss)$coef[3])
+
+plot(y ~ x, main = "World Confirmed Cases", ylab = "confirmed cases", xlab = "days")
+lines(0:max(x), predict(log.ss, data.frame(x=0:max(x))), col="red")
+
+r1 <- sum((x - mean(x))^2)
+r2 <- sum(residuals(log.ss)^2)
+r_sq <- (r1 - r2) / r1
+out <- data.frame(cbind(c(C=C, a=A, k=K, R.value=sqrt(r_sq))))
+#out <- data.frame(cbind(c(C=C, a=A, k=K)))
+names(out)[1] <- "Logistic Function"
+
+return(log.ss)
+}
+```
+
+
+```{r}
+log.ss=log.fit(sum,days)  #fitting world data
+```
+
+
+```{r}
+#prediction
+x_hat = 101 #predicting cases on may 1st
+week_ahead = c(1:x_hat) #jan 22nd to may 1st
+prediction=predict(log.ss, data.frame(x=0:max(week_ahead)), col="red") #list of confirmed cases including predicted
+plot(prediction)
+print(prediction[x_hat]) #predicted confirmed cases on may 1st
+
+#compare to actual data
+xdat<-read.csv("confirmed total updated.csv")
+updated<-data.frame(xdat)
+updated_sum<-colSums(updated[ ,c(5:105)]) #list of actual cases jan 22nd to may 1st
+print(100*(updated_sum[x_hat]-prediction[x_hat])/updated_sum[x_hat]) #percent error for week ahead prediction
+```
+# I am seeing an error of about 8.25% and this error would grow as time goes on because this s just a curve fit, not a model for the underlying characteristics of the epidemic. because it doesn't take into account any of the important features mainly public policy, we can't get a reliable prediction over any interestign length of time.
